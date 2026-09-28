@@ -20,14 +20,18 @@ provider "yandex" {
   zone  = "ru-central1-a"
   service_account_key_file = var.service_account_key_file
   cloud_id  = "b1gp4gki4si5ftm7sd8g"
-  folder_id = "b1g9mu82ledrgsplj3oi"
+  folder_id = var.server_folder_id
+}
+
+data "yandex_compute_image" "img_id" {
+  family = "ubuntu-2204-lts"
 }
 
 resource "yandex_compute_instance" "default" {
   name        = var.server_name
   platform_id = "standard-v1"
   zone        = var.server_zone
-  folder_id   = "b1g9mu82ledrgsplj3oi"
+  folder_id   = var.server_folder_id
 
   resources {
     cores  = var.server_cpu
@@ -48,22 +52,22 @@ resource "yandex_compute_instance" "default" {
 }
 
 resource "yandex_vpc_network" "default" {
-  folder_id = "b1g9mu82ledrgsplj3oi"
+  folder_id = var.server_folder_id
 }
 
 resource "yandex_vpc_subnet" "default" {
   zone           = "ru-central1-a"
   network_id     = yandex_vpc_network.default.id
   v4_cidr_blocks = ["10.5.0.0/24"]
-  folder_id      = "b1g9mu82ledrgsplj3oi"
+  folder_id      = var.server_folder_id
 }
 
 resource "yandex_compute_disk" "default" {
   name      = "disk-name"
   type      = "network-ssd"
   zone      = "ru-central1-a"
-  image_id  = "fd83s8u085j3mq231ago" // идентификатор образа Ubuntu
-  folder_id = "b1g9mu82ledrgsplj3oi"
+  image_id  = data.yandex_compute_image.img_id.family // идентификатор образа Ubuntu
+  folder_id = var.server_folder_id
   size = "20"
 }
 
