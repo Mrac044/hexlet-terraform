@@ -11,7 +11,10 @@ terraform {
 // Terraform должен знать ключ, для выполнения команд по API
 
 // Определение переменной, которую нужно будет задать
-variable "service_account_key_file" {}
+variable "service_account_key_file" {
+  type = string
+  sensitive = true
+}
 
 provider "yandex" {
   zone  = "ru-central1-a"
@@ -21,14 +24,14 @@ provider "yandex" {
 }
 
 resource "yandex_compute_instance" "default" {
-  name        = "test"
+  name        = var.server_name
   platform_id = "standard-v1"
-  zone        = "ru-central1-a"
+  zone        = var.server_zone
   folder_id   = "b1g9mu82ledrgsplj3oi"
 
   resources {
-    cores  = 2
-    memory = 4
+    cores  = var.server_cpu
+    memory = var.server_ram
   }
 
   boot_disk {
@@ -61,8 +64,6 @@ resource "yandex_compute_disk" "default" {
   zone      = "ru-central1-a"
   image_id  = "fd83s8u085j3mq231ago" // идентификатор образа Ubuntu
   folder_id = "b1g9mu82ledrgsplj3oi"
-
-  labels = {
-    environment = "test"
-  }
+  size = "20"
 }
+
