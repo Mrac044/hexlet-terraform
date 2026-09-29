@@ -1,3 +1,10 @@
+variable "service_account_key_file" {
+  description = "Auth key file path"
+  type = string
+  default = "authorized_key.json"
+  sensitive = true
+}
+
 variable "server_name" {
   description = "Instance name"
   type        = string
@@ -22,8 +29,14 @@ variable "server_ram" {
   default     = "4"
 }
 
-variable "server_folder_id" {
+variable "yc_folder_id" {
   description = "Working folder id"
   type        = string
   default     = "b1g9mu82ledrgsplj3oi"
+}
+
+variable "yc_cloud_id" {
+  description = "Working cloud id"
+  type        = string
+  default     = "b1gp4gki4si5ftm7sd8g"
 }
