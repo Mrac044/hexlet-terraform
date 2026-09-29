@@ -1,3 +1,5 @@
+# Secret key path
+
 variable "service_account_key_file" {
   description = "Auth key file path"
   type = string
@@ -5,10 +7,11 @@ variable "service_account_key_file" {
   sensitive = true
 }
 
+# Resource vars
+
 variable "server_name" {
   description = "Instance name"
   type        = string
-  default     = "test"
 }
 
 variable "server_zone" {
@@ -24,7 +27,7 @@ variable "server_cpu" {
 }
 
 variable "server_ram" {
-  description = "Instance RAM resource"
+  description = "Instance RAM memory resource"
   type        = number
   default     = "4"
 }
@@ -32,11 +35,32 @@ variable "server_ram" {
 variable "yc_folder_id" {
   description = "Working folder id"
   type        = string
-  default     = "b1g9mu82ledrgsplj3oi"
 }
 
 variable "yc_cloud_id" {
   description = "Working cloud id"
   type        = string
-  default     = "b1gp4gki4si5ftm7sd8g"
+}
+
+# Database vars
+
+variable "db_name" {
+  description = "Managed database name"
+  type = string
+}
+
+variable "db_user" {
+  description = "Managed database username"
+  type = string
+}
+
+variable "db_password" {
+  description = "Managed database password"
+  type = string
+}
+
+variable "yc_postgresql_version" {
+  description = "Managed database postgresql version"
+  type = number
+  default = 18
 }
