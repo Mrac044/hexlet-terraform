@@ -15,6 +15,61 @@ resource "yandex_vpc_subnet" "subnet" {
   v4_cidr_blocks = ["192.168.192.0/24"]
 }
 
+module "yandex-postgresql" {
+  source = "github.com/terraform-yc-modules/terraform-yc-postgresql?ref=1.0.2"
+  network_id  = yandex_vpc_network.net.id
+  name        = "tfhexlet"
+  description = "Single-node PostgreSQL cluster for test purposes"
+
+  hosts_definition = [
+    {
+      zone             = var.server_zone
+      assign_public_ip = false
+      subnet_id        = yandex_vpc_subnet.subnet.id
+    }
+  ]
+
+  postgresql_config = {
+    max_connections = 100
+  }
+
+  databases = [
+    {
+      name       = "hexlet"
+      owner      = var.db_user
+      lc_collate = "ru_RU.UTF-8"
+      lc_type    = "ru_RU.UTF-8"
+      extensions = ["uuid-ossp", "xml2"]
+    },
+    {
+      name       = "hexlet-test"
+      owner      = var.db_user
+      lc_collate = "ru_RU.UTF-8"
+      lc_type    = "ru_RU.UTF-8"
+      extensions = ["uuid-ossp", "xml2"]
+    }
+  ]
+
+  owners = [
+    {
+      name       = var.db_user
+      conn_limit = 15
+    }
+  ]
+
+  users = [
+    {
+      name        = "guest"
+      conn_limit  = 30
+      permissions = ["hexlet"]
+      settings = {
+        pool_mode                   = "transaction"
+        prepared_statements_pooling = true
+      }
+    }
+  ]
+}
+
 resource "yandex_mdb_postgresql_cluster" "dbcluster" {
   name        = "tfhexlet"
   environment = "PRESTABLE"
@@ -62,161 +117,17 @@ data "yandex_compute_image" "img" {
   family = "container-optimized-image"
 }
 
-resource "yandex_compute_instance" "vm" {
+
+module "vm" {
+  source = "./modules/vm"
   name = "tfhexlet"
-  zone = var.server_zone
-
-  resources {
-    cores = var.server_cpu
-    memory = var.server_ram
-  }
-
-  boot_disk {
-    initialize_params {
-      image_id = data.yandex_compute_image.img.id
-    }
-  }
-
-  network_interface {
-    subnet_id = yandex_vpc_subnet.subnet.id
-    nat = true
-  }
-
-  metadata = {
-    ssh-keys = "ubuntu:${file("~/.ssh/id_ed25519.pub")}"
-  }
-
-  connection {
-    type = "ssh"
-    user = "ubuntu"
-    private_key = file("~/.ssh/id_ed25519")
-    host = self.network_interface[0].nat_ip_address
-  }
-
-  provisioner "remote-exec" {
-  inline = [
-<<EOT
-sudo docker run -d -p 0.0.0.0:80:3000 \
-  -e DB_TYPE=postgres \
-  -e DB_NAME=${var.db_name} \
-  -e DB_HOST=${yandex_mdb_postgresql_cluster.dbcluster.host[0].fqdn} \
-  -e DB_PORT=6432 \
-  -e DB_USER=${var.db_user} \
-  -e DB_PASS=${var.db_password} \
-  ghcr.io/requarks/wiki:2
-EOT
-    ]
-  }
+  nat = true
 }
 
-# data "yandex_compute_image" "img_id" {
-#   family = "ubuntu-2204-lts"
-# }
+output "server_internal_ip" {
+  value = module.vm.vm_internal_ip
+}
 
-# resource "yandex_compute_instance" "default" {
-#   name        = var.server_name
-#   platform_id = "standard-v1"
-#   zone        = var.server_zone
-#   folder_id   = var.yc_folder_id
-
-#   resources {
-#     cores  = var.server_cpu
-#     memory = var.server_ram
-#   }
-
-#   boot_disk {
-#     disk_id = yandex_compute_disk.default.id
-#   }
-
-#   network_interface {
-#     subnet_id = yandex_vpc_subnet.default.id
-#   }
-
-#   metadata = {
-#     ssh-keys = "ubuntu:${file("~/.ssh/id_ed25519.pub")}"
-#   }
-# }
-
-# resource "yandex_vpc_network" "default" {
-#   folder_id = var.yc_folder_id
-# }
-
-# resource "yandex_vpc_subnet" "default" {
-#   zone           = "ru-central1-a"
-#   network_id     = yandex_vpc_network.default.id
-#   v4_cidr_blocks = ["10.5.0.0/24"]
-#   folder_id      = var.yc_folder_id
-# }
-
-# resource "yandex_compute_disk" "default" {
-#   name      = "disk-name"
-#   type      = "network-ssd"
-#   zone      = var.server_zone
-#   image_id  = data.yandex_compute_image.img_id.family // идентификатор образа Ubuntu
-#   folder_id = var.yc_folder_id
-#   size = "20"
-# }
-
-# resource "yandex_compute_instance" "depender" {
-#   name        = "depender"
-#   platform_id = "standart-v1"
-#   zone        = var.server_zone
-#   folder_id   = var.yc_folder_id
-
-#   resources {
-#     cores  = var.server_cpu
-#     memory = var.server_ram
-#   }
-
-#   boot_disk {
-#     disk_id = yandex_compute_disk.default.id
-#   }
-
-#   network_interface {
-#     subnet_id = yandex_vpc_subnet.default.id
-#   }
-
-#   metadata = {
-#     ssh-keys = "ubuntu:${file("~/.ssh/id_ed25519.pub")}"
-#   }
-
-# }
-
-# resource "yandex_lb_target_group" "target_group" {
-#   name      = "target-group"
-#   region_id = var.server_zone
-
-#   target {
-#     subnet_id = yandex_vpc_subnet.default.id
-#     address   = yandex_compute_instance.default.network_interface[0].ip_address
-#   }
-
-#   target {
-#     subnet_id = yandex_vpc_subnet.default.id
-#     address   = yandex_compute_instance.depender.network_interface[0].ip_address
-#   }
-# }
-
-# resource "yandex_lb_network_load_balancer" "lb" {
-#   name = "load-balancer"
-#   type = "external"
-
-#   listener {
-#     name        = "lb_listener"
-#     port        = 80
-#     target_port = 80
-#     protocol    = "tcp"
-#   }
-
-#   attached_target_group {
-#     target_group_id = yandex_lb_target_group.target_group.id
-
-#     healthcheck {
-#       name   = "http"
-#       http_options {
-#         port = 80
-#         path = "/"
-#       }
-#     }
-#   }
-# }
+output "server_external_ip" {
+  value = module.vm.vm_external_ip
+}
