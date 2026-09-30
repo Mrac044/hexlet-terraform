@@ -117,11 +117,27 @@ data "yandex_compute_image" "img" {
   family = "container-optimized-image"
 }
 
+data "yandex_compute_image" "ubuntu" {
+  family = "ubuntu-2204-lts"
+}
 
 module "vm" {
   source = "./modules/vm"
-  name = "tfhexlet"
-  nat = true
+
+  name        = "tfhexlet"
+  server_zone = "ru-central1-a"
+  server_cpu  = 2
+  server_ram  = 4
+  nat         = true
+
+  subnet_id = yandex_vpc_subnet.subnet.id
+  image_id  = data.yandex_compute_image.ubuntu.id
+
+  db_name     = module.yandex-postgresql.databases[0]
+  db_host     = module.yandex-postgresql.cluster_fqdns_list[0][0]
+  db_port     = 6432
+  db_user     = module.yandex-postgresql.owners_data[0].user
+  db_password = module.yandex-postgresql.owners_data[0].password
 }
 
 output "server_internal_ip" {
